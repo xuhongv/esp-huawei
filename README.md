@@ -36,8 +36,8 @@
 用来编译 & 烧写 & 运行等操作的必须环境。 
 > windows 用户可安装虚拟机，在虚拟机中安装 linux。
 
-- **ESP 设备**  
-ESP 设备包括 [ESP芯片](https://www.espressif.com/zh-hans/products/hardware/socs)，[ESP模组](https://www.espressif.com/zh-hans/products/hardware/modules)，[ESP开发板](https://www.espressif.com/zh-hans/products/hardware/development-boards)等。
+- **设备**  
+前往安信可官方获取：[样品](https://anxinke.taobao.com)
 
 - **USB 线**  
 连接 PC 和 ESP 设备，用来烧写/下载程序，查看 log 等。
@@ -49,11 +49,11 @@ ESP 设备包括 [ESP芯片](https://www.espressif.com/zh-hans/products/hardware
 **如果您熟悉 ESP 开发环境，可以很顺利理解下面步骤; 如果您不熟悉某个部分，比如编译，烧录，需要您结合官方的相关文档来理解。如您需阅读 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/index.html)文档等。**  
 
 ## 4.1 编译器环境搭建
-- ESP32  ：根据[官方链接](https://github.com/espressif/esp-idf/blob/master/docs/zh_CN/get-started/linux-setup.rst)中 **工具链的设置**，下载 toolchain
+- ESP32/s2/c3  ：根据[官方链接](https://github.com/espressif/esp-idf/blob/master/docs/zh_CN/get-started/linux-setup.rst)中 **工具链的设置**，下载 toolchain
 
 toolchain 设置参考 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/get-started/index.html#get-started-setup-toolchain)。  
 ## 4.2 烧录工具/下载工具获取
-- ESP32平台：烧录工具位于 [esp-idf](https://github.com/espressif/esp-idf) 下 `./components/esptool_py/esptool/esptool.py`
+- ESP32/s2/c3 平台：烧录工具位于 [esp-idf](https://github.com/espressif/esp-idf) 下 `./components/esptool_py/esptool/esptool.py`
 
 esptool 功能参考:  
 
@@ -64,7 +64,7 @@ $ ./components/esptool_py/esptool/esptool.py --help
 # <span id = "sdkprepare">5.SDK 准备</span> 
 - [esp-huawei SDK](https://github.com/xuhongv/esp-huawei), 通过该 SDK 可实现使用 MQTT 协议，连接 ESP 设备到华为云物联网平台。
 - Espressif SDK
-  - ESP32 平台: [ESP-IDF](https://github.com/espressif/esp-idf)
+  - ESP32/s2/c3 平台: [ESP-IDF](https://github.com/espressif/esp-idf)
 > Espressif SDK 下载好后：  
 > ESP-IDF: 请切换到 v4.3 分支： `git checkout v4.3`
 
@@ -76,7 +76,7 @@ $ ./components/esptool_py/esptool/esptool.py --help
 
 ### 6.1.2 编译 demo 示例
 ```
-idf.py set-target esp32
+idf.py set-target esp32/s2/c3
 idf.py menuconfig
 ```
 
