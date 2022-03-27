@@ -1,0 +1,65 @@
+menu "HUWEI IOT MQTT Configuration"
+
+    menu "OTA Configuration"
+
+        config HUAWEI_HARDWARE_VERSION
+            string "device hardware version (设备硬件版本)"
+            default "V1.0"
+            help
+                Please use lower case
+
+        config HUAWEI_SOFTWARE_VERSION
+            string "device software version (设备软件版本，建议不修改此项)"
+            default "V1.0"
+            help
+                Please use lower case
+
+    endmenu
+
+    config HUWEI_IOT_ENABLE_MQTTS
+        bool "Enable MQTTS (是否使用MQTT SSL加密连接)"
+        default y
+        help
+            This option will enable MQTTS protocol by initializing SSL transport
+
+   
+
+    menu "HUWEI IOT PV Configuration"
+    
+        config HUWEI_IOT_PV_ENABLE
+            bool "Enable PV (是否启动量产模式，具体文档查阅 docs/pv.md)"
+            default n
+
+        menu "HUWEI IOT Triples Configuration"
+             visible if !HUWEI_IOT_PV_ENABLE
+
+            config MQTT_HOST
+               string "MQTT Host (MQTT连接域名)"
+               default "xxxxxx.iot-mqtts.cn-north-4.myhuaweicloud.com"
+               help
+                  Please use lower case
+
+            config TRIPLES_DEVICE_SN_CODE
+               string "device sn code (设备标识码)"
+               default "F4CFA25BB155"
+               help
+                   Please use lower case
+
+            config TRIPLES_DEVICE_ID
+               string "Device ID(设备ID)"
+               default "aithinker_F4CFA25BB155"
+               help
+                   Please use lower case
+        
+        
+            config TRIPLES_DEVICE_SECRET
+               string "Device Secret(设备密钥)"
+               default "Device Secret"
+               help
+                   Please use lower case
+
+        endmenu
+
+    endmenu
+
+endmenu
