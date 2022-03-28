@@ -57,11 +57,11 @@ void HuaWei_IOT_Cloud_mqtt_params_get()
 #ifdef CONFIG_HUWEI_IOT_PV_ENABLE
     //从指定的flash读取数据
     unsigned char secret[] = "2022032704";
-    unsigned char buffer[] = CONFIG_TRIPLES_DEVICE_SN_CODE;
+    unsigned char buffer[] = CONFIG_TRIPLES_DEVICE_SECRET;
 #else
     //从配置文件里面读取数据
     unsigned char secret[] = "2022032704";
-    unsigned char buffer[] = CONFIG_TRIPLES_DEVICE_SN_CODE;
+    unsigned char buffer[] = CONFIG_TRIPLES_DEVICE_SECRET;
 #endif
 
     hmac_sha256_calc_result(pDigest, secret, strlen((char *)secret), buffer, strlen((char *)buffer));
