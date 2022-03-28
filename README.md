@@ -43,7 +43,7 @@
 连接 PC 和 ESP 设备，用来烧写/下载程序，查看 log 等。
 
 # <span id = "aliyunprepare">3.华为云平台准备</span>
-根据[华为云物联网平台接入官方文档](https://support.huaweicloud.com/productdesc-iothub/iot_04_0002.html)，在阿里云平台创建产品，创建设备，同时自动产生 将在 6.2.3 节用到。
+根据[华为云物联网平台接入官方文档](https://support.huaweicloud.com/productdesc-iothub/iot_04_0002.html)，在华为云平台创建产品，创建设备，同时自动产生 将在 6.2.3 节用到。
 
 # <span id = "compileprepare">4.环境搭建</span>
 **如果您熟悉 ESP 开发环境，可以很顺利理解下面步骤; 如果您不熟悉某个部分，比如编译，烧录，需要您结合官方的相关文档来理解。如您需阅读 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/index.html)文档等。**  
@@ -116,7 +116,7 @@ make monitor
 ```
 
 如将 ESP32 拨至运行状态，即可看到如下 log：
-log 显示了 ESP32 基于 TLS 建立了与阿里云的安全连接通路，接着通过 MQTT 协议订阅和发布消息，同时在控制台上，也能看到 ESP32 推送的 MQTT 消息。  
+log 显示了 ESP32 基于 TLS 建立了与华为云的安全连接通路，接着通过 MQTT 协议订阅和发布消息，同时在控制台上，也能看到 ESP32 推送的 MQTT 消息。  
 
 ```
 I (798) wifi:enable tsf
