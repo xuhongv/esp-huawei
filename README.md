@@ -216,7 +216,7 @@ idf.py menuconfig
 
  然后修改版本号，在 Component config --- HUAWEI  IOT MQTT Configuration  --- OTA  Configuration  修改第一项。
 
-![](static/Version Setting.png)
+![](static/Version-Setting.png)
 
 重新编译成功之后，在工程的 build 文件下面生成一个 850KB左右的 **aithinker-esp32-huawei-iot.bin 文件**；
 
@@ -228,13 +228,13 @@ idf.py build
 
 打开控制台，找到 设备--软固件升级--资源部管理--固件列表，点击上传固件。
 
-![](static/ota setting.png)
+![](static/ota-setting.png)
 
 ## 7.3  发送新固件升级
 
 打开控制台，找到 设备--软固件升级--升级任务，点击新建任务。
 
-![](static/task ota.png)
+![](static/task-ota.png)
 
 
 
