@@ -1,8 +1,15 @@
+/*
+ * @Author: your name
+ * @Date: 2022-03-26 10:43:44
+ * @LastEditTime: 2022-04-04 14:26:30
+ * @LastEditors: Please set LastEditors
+ * @Description: 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ * @FilePath: \esp-idf-v4.3\examples\aithinker-esp32-huawei-iot\components\huawei_iot\huawei-iot.c
+ */
 
 #include "huawei-iot.h"
 #include "esp_log.h"
 #include "mbedtls/md.h"
-
 
 static void hmac_sha256_calc_result(unsigned char *pDigest, unsigned char *secret, int secret_length, unsigned char *buffer, int buffer_length)
 {
@@ -52,7 +59,7 @@ void HuaWei_IOT_Cloud_mqtt_params_get()
 {
 
     unsigned char *pDigest = (unsigned char *)malloc(100);
-    char out[SHA256_HASH_SIZE * 2 + 1];
+
 // 量产模式
 #ifdef CONFIG_HUWEI_IOT_PV_ENABLE
     //从指定的flash读取数据
@@ -79,5 +86,26 @@ void HuaWei_IOT_Cloud_mqtt_params_get()
     sprintf(device_info.topic_pub_ota, "$oc/devices/%s/sys/events/up", CONFIG_TRIPLES_DEVICE_ID);
     sprintf(device_info.topic_sub_ota, "$oc/devices/%s/sys/events/down", CONFIG_TRIPLES_DEVICE_ID);
 
+    sprintf(device_info.topic_common_sub, "$oc/devices/%s/sys/commands/request_id=", CONFIG_TRIPLES_DEVICE_ID);
+    sprintf(device_info.topic_common_pub, "$oc/devices/%s/sys/commands/response/request_id=", CONFIG_TRIPLES_DEVICE_ID);
+
+    device_info.topic_common_pub_length = strlen(device_info.topic_common_pub);
+    device_info.topic_common_sub_length = strlen(device_info.topic_common_sub);
+
     free(pDigest);
+}
+
+void json_generate_version_info(char *pbDest)
+{
+    sprintf(pbDest, "{\"services\":[{\"service_id\":\"$ota\",\"event_type\":\"version_report\",\"paras\":{\"sw_version\":\"%s\",\"fw_version\":\"%s\"}}]}", CONFIG_HUAWEI_SOFTWARE_VERSION, CONFIG_HUAWEI_HARDWARE_VERSION);
+}
+
+void json_generate_ota_progress_info(char *pbDest, huawei_mqtt_ota_code_t errcode, int progress)
+{
+    sprintf(pbDest, "{\"services\":[{\"service_id\":\"$ota\",\"event_type\":\"upgrade_progress_report\",\"paras\":{\"result_code\":%d,\"progress\":%d,\"version\":\"%s\"}}]}", errcode, progress, CONFIG_HUAWEI_HARDWARE_VERSION);
+}
+
+void json_generate_ota_progress_success(char *pbDest, char *pVersion)
+{
+    sprintf(pbDest, "{\"services\":[{\"service_id\":\"$ota\",\"event_type\":\"upgrade_progress_report\",\"paras\":{\"result_code\":0,\"progress\":100,\"version\":\"%s\"}}]}", pVersion);
 }

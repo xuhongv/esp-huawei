@@ -8,6 +8,7 @@
 - [4.环境搭建](#compileprepare)  
 - [5.SDK 准备](#sdkprepare)  
 - [6.编译&烧写&运行](#makeflash)  
+- [7.OTA演示](#ota)  
 
 # <span id = "Introduction">0.介绍</span>
 [安信可](https://www.espressif.com/zh-hans)是物联网无线的设计专家，专注于设计简单灵活、易于制造和部署的解决方案。安信可研发和设计 IoT 业内集成度SoC、性能稳定、功耗低的无线系统级模组产品，因此具备强大的 Wi-Fi 和蓝牙功能，以及出色的射频性能。
@@ -116,32 +117,48 @@ make monitor
 ```
 
 如将 ESP32 拨至运行状态，即可看到如下 log：
-log 显示了 ESP32 基于 TLS 建立了与华为云的安全连接通路，接着通过 MQTT 协议订阅和发布消息，同时在控制台上，也能看到 ESP32 推送的 MQTT 消息。  
+
+- 默认上电的配网日志打印
 
 ```
-I (798) wifi:enable tsf
-I (808) wifi_init: rx ba win: 6
-I (808) wifi_init: tcpip mbox: 32
-I (808) wifi_init: udp mbox: 6
-I (808) wifi_init: tcp mbox: 6
-I (808) wifi_init: tcp tx win: 5744
-I (808) wifi_init: tcp rx win: 5744
-I (818) wifi_init: tcp mss: 1440
-I (818) wifi_init: WiFi IRAM OP enabled
-I (818) wifi_init: WiFi RX IRAM OP enabled
-I (828) router: -- get ssid: aiot@xuhongv
-I (828) router: -- get password: xuhong12345678
-I (838) aithinker-debugLog::: Next connectting router.
-I (838) wifi:new:<1,0>, old:<1,0>, ap:<255,255>, sta:<1,0>, prof:1
-I (848) wifi:state: init -> auth (b0)
-I (898) wifi:state: auth -> assoc (0)
-I (938) wifi:state: assoc -> run (10)
-I (958) wifi:connected with aiot@xuhongv, aid = 3, channel 1, BW20, bssid = 9c:9d:7e:40:e8:10
-I (958) wifi:security: WPA2-PSK, phy: bgn, rssi: -21
-I (968) wifi:pm start, type: 1
+I (885) wifi:mode : sta (9c:9c:1f:1d:33:00)
+I (895) wifi:enable tsf
+I (895) wifi_init: rx ba win: 6
+I (895) wifi_init: tcpip mbox: 32
+I (895) wifi_init: udp mbox: 6
+I (895) wifi_init: tcp mbox: 6
+I (895) wifi_init: tcp tx win: 5744
+I (905) wifi_init: tcp rx win: 5744
+I (905) wifi_init: tcp mss: 1440
+I (905) wifi_init: WiFi IRAM OP enabled
+I (905) wifi_init: WiFi RX IRAM OP enabled
+I (915) aithinker-debugLog::: into smartconfig mode
+I (965) smartconfig: SC version: V3.0.1
+I (5065) wifi:ic_enable_sniffer
+I (5065) smartconfig: Start to find channel...
+I (5065) aithinker-debugLog::: Scan done
+I (38435) smartconfig: TYPE: AIRKISS
+I (38435) smartconfig: T|AP MAC: 9c:9d:7e:40:e8:10
+I (38435) smartconfig: Found channel on 11-0. Start to get ssid and password...
+I (38435) aithinker-debugLog::: Found channel
+I (41025) smartconfig: T|pswd: xuhongLove
+I (41025) smartconfig: T|ssid: aiot@xuhongv
+I (41025) wifi:ic_disable_sniffer
+I (41025) aithinker-debugLog::: Got SSID and password
+I (41035) aithinker-debugLog::: SSID:aiot@xuhongv
+I (41035) aithinker-debugLog::: PASSWORD:xuhongLove
+I (42295) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:1
+I (43435) wifi:state: init -> auth (b0)
+I (43495) wifi:state: auth -> assoc (0)
+I (43535) wifi:state: assoc -> run (10)
+I (43585) wifi:connected with aiot@xuhongv, aid = 2, channel 11, BW20, bssid = 9c:9d:7e:40:e8:10
+I (43585) wifi:security: WPA2-PSK, phy: bgn, rssi: -32
+I (43595) wifi:pm start, type: 1
+```
+- 下面 log 显示了 ESP32 基于 TLS 建立了与华为云的安全连接通路，接着通过 MQTT 协议订阅和发布消息，同时在控制台上，也能看到 ESP32 推送的 MQTT 消息。**可在控制台---监控运维---消息跟踪，可看到设备消息上报。  **
 
-W (968) wifi:<ba-add>idx:0 (ifx:0, 9c:9d:7e:40:e8:10), tid:6, ssn:2, winSize:64
-I (988) wifi:AP's beacon interval = 102400 us, DTIM period = 1
+```
+...
 I (2088) esp_netif_handlers: sta ip: 192.168.31.228, mask: 255.255.255.0, gw: 192.168.31.1
 I (2088) aithinker-debugLog::: WiFi Connected to ap
 I (2088) aithinker-debugLog::: Free memory: 229384 bytes
@@ -159,4 +176,165 @@ I (3458) aithinker-debugLog::: sent subscribe successful=$oc/devices/aithinker_F
 I (3468) aithinker-debugLog::: sent subscribe successful=$oc/devices/aithinker_F4CFA25BB195/sys/messages/dowm
 I (3558) aithinker-debugLog::: MQTT_EVENT_SUBSCRIBED, msg_id=60971
 I (3618) aithinker-debugLog::: MQTT_EVENT_SUBSCRIBED, msg_id=21864
+
+... ...
+
+ cloud device_info.topic_common_sub: $oc/devices/aithinker_F4CFA25BB155/sys/commands/request_id=
+I (3535) aithinker-debugLog::: sent subscribe successful=$oc/devices/aithinker_F4CFA25BB155/sys/events/down
+I (3545) aithinker-debugLog::: sent subscribe successful=$oc/devices/aithinker_F4CFA25BB155/sys/messages/dowm
+I (3545) aithinker-debugLog:::  ota public topic: $oc/devices/aithinker_F4CFA25BB155/sys/events/up
+I (3555) aithinker-debugLog:::  ota public msg: {"services":[{"service_id":"$ota","event_type":"version_report","paras":{"sw_version":"V1.0","fw_version":"V1.0"}}]}
+I (3585) aithinker-debugLog::: MQTT_EVENT_SUBSCRIBED, msg_id=34835
+I (3655) aithinker-debugLog::: MQTT_EVENT_SUBSCRIBED, msg_id=22635
+I (3655) aithinker-debugLog::: MQTT_EVENT_PUBLISHED, msg_id=61986
+I (6195) aithinker-debugLog::: Free memory: 213688 bytes
+I (6195) aithinker-debugLog::: cloud topic[95]:
+ $oc/devices/aithinker_F4CFA25BB155/sys/commands/request_id=2a843a13-8801-4545-b408-e40491b54b2c
+I (6195) aithinker-debugLog::: cloud payload[81]:
+ {"paras":{"SleepEN":"SleepUnable"},"service_id":"Sleep","command_name":"SleepIn"}
+
+I (6215) aithinker-debugLog::: get service_id: Sleep
+I (6215) aithinker-debugLog::: get command_name: SleepIn
+I (6225) aithinker-debugLog::: get paras:
+{
+        "SleepEN":      "SleepUnable"
+}
+I (6225) aithinker-debugLog::: cloud requestId: 2a843a13-8801-4545-b408-e40491b54b2c
+I (6235) aithinker-debugLog::: [Upload topic]: $oc/devices/aithinker_F4CFA25BB155/sys/commands/response/request_id=2a843a13-8801-4545-b408-e40491b54b2cI (6245) aithinker-debugLog::: [Upload data]: {"result_code":0}
+I (6255) aithinker-debugLog::: Free memory: 213120 bytes
+I (6325) aithinker-debugLog::: MQTT_EVENT_PUBLISHED, msg_id=9543
+
 ```
+
+# <span id = "ota">7.OTA 演示</span> 
+
+## 7.1 修改固件版本
+
+```
+idf.py menuconfig
+```
+
+ 然后修改版本号，在 Component config --- HUAWEI  IOT MQTT Configuration  --- OTA  Configuration  修改第一项。
+
+![](static/Version Setting.png)
+
+重新编译成功之后，在工程的 build 文件下面生成一个 850KB左右的 **aithinker-esp32-huawei-iot.bin 文件**；
+
+```
+idf.py build
+```
+
+## 7.2  把新固件传到服务器
+
+打开控制台，找到 设备--软固件升级--资源部管理--固件列表，点击上传固件。
+
+![](static/ota setting.png)
+
+## 7.3  发送新固件升级
+
+打开控制台，找到 设备--软固件升级--升级任务，点击新建任务。
+
+![](static/task ota.png)
+
+
+
+观察设备打印日志，可见正在升级：
+
+```
+ (44410) aithinker-debugLog::: cloud topic[50]:  
+ $oc/devices/aithinker_F4CFA25BB155/sys/events/down
+I (44410) aithinker-debugLog::: cloud payload[534]: 
+ {"object_device_id":"aithinker_F4CFA25BB155","services":[{"event_type":"firmware_upgrade","service_id":"$ota","event_time":"20220404T080450Z","paras":{"version":"v1.5","url":"https://121.36.42.100:8943/iodm/dev/v2.0/upgradefile/applications/2917ef9003854f769d69026380e92ae7/devices/aithinker_F4CFA25BB155/packages/e2bf30511f0b9f65f17e4c54","file_size":884768,"access_token":"1e766a203ee2b15a567833eb0697a900ff502780eb84c69df9fdbc4d0294145a","expires":86400,"sign":"52683c81688b7d5501713d6f0f0d99ec9ea9a5514aaa4594db079bcfb6d86b26"}}]} 
+
+I (44460) aithinker-debugLog::: pJSON_Item_event_type: firmware_upgrade
+E (44470) ota:: get-> bufferOTAToken: Bearer 1e766a203ee2b15a567833eb0697a900ff502780eb84c69df9fdbc4d0294145a
+E (44480) ota:: get-> bufferOTAURL: https://121.36.42.100:8943/iodm/dev/v2.0/upgradefile/applications/2917ef9003854f769d69026380e92ae7/devices/aithinker_F4CFA25BB155/packages/e2bf30511f0b9f65f17e4c54
+E (44500) ota:: get->bufferOTAVersion: v1.5
+I (44500) ota:: get access_token:Bearer 1e766a203ee2b15a567833eb0697a900ff502780eb84c69df9fdbc4d0294145a
+I (44510) ota:: get url: https://121.36.42.100:8943/iodm/dev/v2.0/upgradefile/applications/2917ef9003854f769d69026380e92ae7/devices/aithinker_F4CFA25BB155/packages/e2bf30511f0b9f65f17e4c54
+I (44530) ota:: get version: v1.5
+hostname:121.36.42.100
+port:8943
+path:/iodm/dev/v2.0/upgradefile/applications/2917ef9003854f769d69026380e92ae7/devices/aithinker_F4CFA25BB155/packages/e2bf30511f0b9f65f17e4c54
+I (44540) ota:: pVersion: v1.5
+I (44550) ota:: http header: GET  /iodm/dev/v2.0/upgradefile/applications/2917ef9003854f769d69026380e92ae7/devices/aithinker_F4CFA25BB155/packages/e2bf30511f0b9f65f17e4c54  HTTP/1.0
+
+Host:  121.36.42.100 
+
+User-Agent: aithinker/1.0 xuhongv
+
+Content-Type: application/json
+
+Authorization: Bearer 1e766a203ee2b15a567833eb0697a900ff502780eb84c69df9fdbc4d0294145a
+
+
+I (44580) ota:: Starting OTA example
+I (44580) ota:: Running partition type 0 subtype 16 (offset 0x00010000)
+I (44590) ota:: Loading the CA root certificate...
+I (44790) ota:: Setting hostname for TLS session...
+I (44790) ota:: Setting up the SSL/TLS structure...
+I (44790) ota:: Connecting to 121.36.42.100:8943...
+I (44800) aithinker-debugLog::: huawei_https_ota...
+I (44860) ota:: Connected.
+I (44860) ota:: Performing the SSL/TLS handshake...
+I (45780) ota:: Verifying peer X.509 certificate...
+I (45780) ota:: Certificate verified.
+I (45780) ota:: Cipher suite is TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384
+I (45790) ota:: Writing HTTP request...
+I (45790) ota:: 334 bytes written
+I (45790) ota:: Writing to partition subtype 17 at offset 0x110000
+I (50010) ota:: esp_ota_begin succeeded
+I (50010) ota:: Totoal OTA number 0 update to 1 part
+I (50010) ota:: Reading HTTP response...
+I (50020) ota:: parse Content-Length:884768, ota_size 884768
+I (50030) ota:: Have written image length 721
+I (50030) ota:: Have written image length 1745
+I (50030) ota:: Have written image length 2493
+I (50160) ota:: Have written image length 3517
+I (50160) ota:: Have written image length 4541
+I (50160) ota:: Have written image length 5565
+I (50170) ota:: Have written image length 6589
+I (50170) ota:: Have written image length 7613
+I (50170) ota:: Have written image length 8637
+I (50180) ota:: Have written image length 9661
+I (50180) ota:: Have written image length 10685
+I (50190) ota:: Have written image length 11709
+I (50200) ota:: Have written image length 12733
+I (50210) ota:: Have written image length 13709
+I (50210) ota:: Have written image length 14733
+I (50220) ota:: Have written image length 15111
+
+... ... ... ...
+
+I (61650) ota:: Have written image length 877557
+I (61720) ota:: Have written image length 878581
+I (61730) ota:: Have written image length 879605
+I (61730) ota:: Have written image length 880629
+I (61730) ota:: Have written image length 881653
+I (61740) ota:: Have written image length 882677
+I (61740) ota:: Have written image length 883701
+I (61750) ota:: Have written image length 884725
+I (61750) ota:: Have written image length 884768
+I (61750) ota:: Total Write binary data length : 884768
+I (61750) esp_image: segment 0: paddr=00110020 vaddr=3f400020 size=2125ch (135772) map
+I (61800) esp_image: segment 1: paddr=00131284 vaddr=3ffb0000 size=041f8h ( 16888) 
+I (61810) esp_image: segment 2: paddr=00135484 vaddr=40080000 size=0ab94h ( 43924) 
+I (61830) esp_image: segment 3: paddr=00140020 vaddr=400d0020 size=9da38h (645688) map
+I (62040) esp_image: segment 4: paddr=001dda60 vaddr=4008ab94 size=0a57ch ( 42364) 
+I (62050) esp_image: segment 5: paddr=001e7fe4 vaddr=50000000 size=00010h (    16) 
+I (62050) esp_image: segment 0: paddr=00110020 vaddr=3f400020 size=2125ch (135772) map
+I (62100) esp_image: segment 1: paddr=00131284 vaddr=3ffb0000 size=041f8h ( 16888) 
+I (62110) esp_image: segment 2: paddr=00135484 vaddr=40080000 size=0ab94h ( 43924) 
+I (62120) esp_image: segment 3: paddr=00140020 vaddr=400d0020 size=9da38h (645688) map
+I (62330) esp_image: segment 4: paddr=001dda60 vaddr=4008ab94 size=0a57ch ( 42364) 
+I (62350) esp_image: segment 5: paddr=001e7fe4 vaddr=50000000 size=00010h (    16) 
+I (62400) ota:: Prepare to restart system!
+I (62400) ota:: Completed 1 requests and  restart 
+I (62400) ota:: 3...
+I (62460) aithinker-debugLog::: MQTT_EVENT_PUBLISHED, msg_id=40947
+I (63400) ota:: 2...
+I (64400) ota:: 1...
+I (65400) ota:: 0...
+I (66400) wifi:state: run -> init (0)
+```
+

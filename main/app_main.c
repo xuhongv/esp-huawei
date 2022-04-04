@@ -31,6 +31,7 @@
 #define TAG "aithinker-debugLog::"
 #define HUAWEI_IOT_INFO(fmt, ...) ESP_LOGI(TAG, fmt, ##__VA_ARGS__)
 #define HUAWEI_IOT_ERROR(fmt, ...) ESP_LOGE(TAG, fmt, ##__VA_ARGS__)
+#define BUFFER_LEN 256
 
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t wifi_event_group;
@@ -39,16 +40,48 @@ static EventGroupHandle_t wifi_event_group;
    but we only care about one event - are we connected
    to the AP with an IP? */
 static const int CONNECTED_BIT = BIT0;
-static const int ESPTOUCH_DONE_BIT = BIT1;
+static const int NET_DONE_BIT = BIT1;
 
 static TaskHandle_t xMQTTTaskHandle = NULL;
 esp_mqtt_client_handle_t client = NULL;
 
-char topicSub[100], topicPub[100], topicPubOTA[100], topicSubOTA[100];
-static char *requestId = NULL;
-
 extern const uint8_t mqtt_org_pem_start[] asm("_binary_mqtts_root_cert_pem_start");
 extern const uint8_t mqtt_org_pem_end[] asm("_binary_mqtts_root_cert_pem_end");
+
+/*
+ * @Description: 上报数据到服务器
+ * @param:  buf 内容
+ * @param:  len 长度
+ * @return:
+ */
+void publish_data_to_mqtt(char *buf, int32_t len, char *requestId)
+{
+    // hex2string((char *)buf, bufferOut, 3, src_len);
+    char *bufferOut = (char *)malloc(BUFFER_LEN);
+    char *pubTopic = (char *)malloc(BUFFER_LEN);
+    char strPayload[] = {"{\"result_code\":0}"};
+
+    sprintf(pubTopic, "%s%s", device_info.topic_common_pub, requestId);
+
+    ESP_LOGI(TAG, "[Upload topic]: %s", pubTopic);
+    ESP_LOGI(TAG, "[Upload data]: %s", strPayload);
+    ESP_LOGI(TAG, "Free memory: %d bytes", esp_get_free_heap_size());
+
+    esp_mqtt_client_publish(client, pubTopic, strPayload, strlen(strPayload), 1, 0);
+
+    // Topic：$oc/devices/{device_id}/sys/commands/response/request_id={request_id}
+    // 数据格式：
+    // {
+    //     "result_code": 0,
+    //     "response_name": "COMMAND_RESPONSE",
+    //     "paras": {
+    //         "result": "success"
+    //     }
+    // }
+
+    free(bufferOut);
+    free(pubTopic);
+}
 
 /*
  * @Description: MQTT下发的回调函数
@@ -63,16 +96,21 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
     case MQTT_EVENT_CONNECTED:
         HUAWEI_IOT_INFO("MQTT_EVENT_CONNECTED");
 
+        HUAWEI_IOT_INFO("cloud device_info.topic_common_sub: %s", device_info.topic_common_sub);
+
         esp_mqtt_client_subscribe(client, device_info.topic_sub_ota, 1);
         HUAWEI_IOT_INFO("sent subscribe successful=%s", device_info.topic_sub_ota);
         esp_mqtt_client_subscribe(client, device_info.topic_sub_messages, 1);
         HUAWEI_IOT_INFO("sent subscribe successful=%s", device_info.topic_sub_messages);
 
-        // char *bufferOTA = (char *)malloc(BUFFER_LEN);
-        // json_generate_version_info(bufferOTA);
-        // // 上报版本信息
-        // esp_mqtt_client_publish(client, topicPubOTA, bufferOTA, strlen(bufferOTA), 1, 0);
-        // free(bufferOTA);
+        char *bufferOTA = (char *)malloc(BUFFER_LEN);
+        json_generate_version_info(bufferOTA);
+        HUAWEI_IOT_INFO(" ota public topic: %s", device_info.topic_pub_ota);
+        HUAWEI_IOT_INFO(" ota public msg: %s", bufferOTA);
+        // 上报版本信息
+        esp_mqtt_client_publish(client, device_info.topic_pub_ota, bufferOTA, strlen(bufferOTA), 1, 0);
+        free(bufferOTA);
+
         break;
 
     case MQTT_EVENT_DISCONNECTED:
@@ -91,7 +129,8 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         HUAWEI_IOT_INFO("MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_DATA:
-        requestId = (char *)malloc(512);
+    {
+        char *requestId = (char *)malloc(BUFFER_LEN * 2);
         char *payload = (char *)malloc(1024);
         HUAWEI_IOT_INFO("Free memory: %d bytes", esp_get_free_heap_size());
 
@@ -100,8 +139,8 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         event->topic[event->topic_len] = '\0';
         event->data[event->data_len] = '\0';
 
-        HUAWEI_IOT_INFO("event->topic[%d]: %s", event->topic_len, event->topic);
-        HUAWEI_IOT_INFO("event->data: %s", payload);
+        HUAWEI_IOT_INFO("cloud topic[%d]:  \n %s", event->topic_len, event->topic);
+        HUAWEI_IOT_INFO("cloud payload[%d]: \n %s \n", event->data_len, payload);
 
         // 首先整体判断是否为一个json格式的数据
         cJSON *pJsonRoot = cJSON_Parse(payload);
@@ -112,20 +151,124 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
             goto __cJSON_Delete;
         }
 
-        //正常数据下发
-        if (strcmp(event->topic, topicSub) == 0)
+        //平台命令下发 https://support.huaweicloud.com/api-iothub/iot_06_v5_3014.html
+        if (strstr(event->topic, device_info.topic_common_sub))
         {
-            requestId = (char *)malloc(512);
-            cJSON *pJSON_Item_content = cJSON_GetObjectItem(pJsonRoot, "content");
+
+            int length = event->topic_len - device_info.topic_common_sub_length;
+            strncpy(requestId, event->topic + device_info.topic_common_sub_length, length);
+            requestId[length] = '\0';
+
+            cJSON *pJSON_Item_content = cJSON_GetObjectItem(pJsonRoot, "service_id");
             if (cJSON_IsString(pJSON_Item_content))
             {
-                HUAWEI_IOT_INFO("content: %s", pJSON_Item_content->valuestring);
+                HUAWEI_IOT_INFO("get service_id: %s", pJSON_Item_content->valuestring);
             }
-            cJSON *pJSON_Item_id = cJSON_GetObjectItem(pJsonRoot, "id");
-            if (cJSON_IsString(pJSON_Item_content))
+
+            cJSON *pJSON_Item_command_name = cJSON_GetObjectItem(pJsonRoot, "command_name");
+            if (cJSON_IsString(pJSON_Item_command_name))
             {
-                memset(requestId, 0, 512);
-                sprintf(requestId, "%s", pJSON_Item_id->valuestring);
+                HUAWEI_IOT_INFO("get command_name: %s", pJSON_Item_command_name->valuestring);
+            }
+
+            cJSON *pJSON_Item_paras = cJSON_GetObjectItem(pJsonRoot, "paras");
+            if (cJSON_IsObject(pJSON_Item_paras))
+            {
+                char *p_paras = cJSON_Print(pJSON_Item_paras);
+                HUAWEI_IOT_INFO("get paras: \n%s", p_paras);
+                cJSON_free(p_paras);
+            }
+
+            HUAWEI_IOT_INFO("cloud requestId: %s", requestId);
+
+            // handle your logic
+            publish_data_to_mqtt("i am aithinker", 15, requestId);
+        }
+        //固件升级相关逻辑
+        else if (strcmp(event->topic, device_info.topic_sub_ota) == 0)
+        {
+            cJSON *pJSON_Item_service = cJSON_GetObjectItem(pJsonRoot, "services");
+            cJSON *pJSON_Item_service_des = cJSON_GetArrayItem(pJSON_Item_service, 0);
+            cJSON *pJSON_Item_event_type = cJSON_GetObjectItem(pJSON_Item_service_des, "event_type");
+
+            ESP_LOGI(TAG, "pJSON_Item_event_type: %s", pJSON_Item_event_type->valuestring);
+
+            if (0 == strcmp("version_query", pJSON_Item_event_type->valuestring))
+            {
+                char *bufferOTAReport = (char *)malloc(512);
+                json_generate_version_info(bufferOTAReport);
+                // 上报版本信息
+                esp_mqtt_client_publish(client, device_info.topic_pub_ota, bufferOTAReport, strlen(bufferOTAReport), 1, 0);
+                free(bufferOTAReport);
+            }
+            else if (0 == strcmp("firmware_upgrade", pJSON_Item_event_type->valuestring))
+            {
+
+                //{
+                //     "object_device_id": "aithinker_F4CFA25BB155",
+                //     "services": [
+                //         {
+                //             "event_type": "firmware_upgrade",
+                //             "service_id": "$ota",
+                //             "event_time": "20220404T070550Z",
+                //             "paras": {
+                //                 "version": "v1.5",
+                //                 "url": "https://121.36.42.100:8943/iodm/dev/v2.0/upgradefile/applications/2917ef9003854f769d69026380e92ae7/devices/aithinker_F4CFA25BB155/packages/e2bf30511f0b9f65f17e4c54",
+                //                 "file_size": 884768,
+                //                 "access_token": "432308265df07a9df1d1832605c840df3c4015b385750c21353947fba27bf040",
+                //                 "expires": 86400,
+                //                 "sign": "52683c81688b7d5501713d6f0f0d99ec9ea9a5514aaa4594db079bcfb6d86b26"
+                //             }
+                //         }
+                //     ]
+                // }
+                cJSON *pJSON_Item_event_paras = cJSON_GetObjectItem(pJSON_Item_service_des, "paras");
+                cJSON *pJSON_Item_event_access_token = cJSON_GetObjectItem(pJSON_Item_event_paras, "access_token");
+                cJSON *pJSON_Item_event_access_version = cJSON_GetObjectItem(pJSON_Item_event_paras, "version");
+                cJSON *pJSON_Item_event_url = cJSON_GetObjectItem(pJSON_Item_event_paras, "url");
+
+                char *bufferOTAToken = (char *)malloc(512);
+                sprintf(bufferOTAToken, "Bearer %s", pJSON_Item_event_access_token->valuestring);
+
+                char *bufferOTAURL = (char *)malloc(512);
+                memset(bufferOTAURL, 0, 64);
+                strncpy(bufferOTAURL, pJSON_Item_event_url->valuestring, strlen(pJSON_Item_event_url->valuestring));
+
+                char *bufferOTAVersion = (char *)malloc(64);
+                memset(bufferOTAVersion, 0, 64);
+                strncpy(bufferOTAVersion, pJSON_Item_event_access_version->valuestring, strlen(pJSON_Item_event_access_version->valuestring));
+
+                huawei_http_client_config_t config = {
+                    .token = bufferOTAToken,
+                    .url = bufferOTAURL,
+                    .version = bufferOTAVersion,
+                };
+
+                config.token[strlen(pJSON_Item_event_access_token->valuestring) + 7] = '\0';
+                config.url[strlen(pJSON_Item_event_url->valuestring)] = '\0';
+                config.version[strlen(pJSON_Item_event_access_version->valuestring)] = '\0';
+
+                config.url_length = strlen(pJSON_Item_event_url->valuestring);
+                config.token_length = strlen(pJSON_Item_event_access_token->valuestring) + 7;
+                config.version_length = strlen(pJSON_Item_event_access_version->valuestring);
+
+                if ((huawei_https_ota(&config)) == ESP_OK)
+                {
+                    ESP_LOGI(TAG, "huawei_https_ota...");
+                }
+                else
+                {
+                    char *bufferOTAReportting = (char *)malloc(512);
+                    json_generate_ota_progress_info(bufferOTAReportting, OTA_CODE_PROCESS, 10);
+                    // 上报进度
+                    esp_mqtt_client_publish(client, device_info.topic_pub_ota, bufferOTAReportting, strlen(bufferOTAReportting), 1, 0);
+                    free(bufferOTAReportting);
+                    ESP_LOGE(TAG, "Firmware Upgrading...");
+                }
+
+                free(bufferOTAToken);
+                free(bufferOTAURL);
+                free(bufferOTAVersion);
             }
         }
 
@@ -134,8 +277,8 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 
         free(requestId);
         free(payload);
-
         break;
+    }
     case MQTT_EVENT_ERROR:
         HUAWEI_IOT_INFO("MQTT_EVENT_ERROR");
         break;
@@ -161,7 +304,7 @@ static void TaskMQTTConnect(void *pvParameters)
         .disable_auto_reconnect = false,
         .username = CONFIG_TRIPLES_DEVICE_ID,
         .reconnect_timeout_ms = 3000,
-        .keepalive = 30,
+        .keepalive = 60,
         .client_id = device_info.client_id,
         .password = device_info.password,
     // MQTT SSL 连接
@@ -279,7 +422,7 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     }
     else if (event_base == SC_EVENT && event_id == SC_EVENT_SEND_ACK_DONE)
     {
-        xEventGroupSetBits(wifi_event_group, ESPTOUCH_DONE_BIT);
+        xEventGroupSetBits(wifi_event_group, NET_DONE_BIT);
     }
 }
 
@@ -309,7 +452,7 @@ void TaskSmartConfigAirKiss2Net(void *parm)
     //阻塞等待配网完成结果
     while (1)
     {
-        uxBits = xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT, true, false, portMAX_DELAY);
+        uxBits = xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT | NET_DONE_BIT, true, false, portMAX_DELAY);
         // 配网完成
         if (uxBits & CONNECTED_BIT)
         {
@@ -317,7 +460,7 @@ void TaskSmartConfigAirKiss2Net(void *parm)
             mqtt_app_start();
             vTaskDelete(NULL);
         }
-        if (uxBits & ESPTOUCH_DONE_BIT)
+        if (uxBits & NET_DONE_BIT)
         {
             HUAWEI_IOT_INFO("smartconfig over");
             esp_smartconfig_stop();
@@ -353,7 +496,20 @@ static void initialise_wifi(void)
 
 void app_main()
 {
+    // Initialize NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
 
-    ESP_ERROR_CHECK(nvs_flash_init());
+    ESP_LOGI(TAG, "[APP] Startup..");
+    ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
+    ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
+    ESP_LOGI(TAG, "[FW] Release Hard version: %s", CONFIG_HUAWEI_HARDWARE_VERSION);
+    ESP_LOGI(TAG, "[FW] Release Soft version: %s", CONFIG_HUAWEI_SOFTWARE_VERSION);
+
     initialise_wifi();
 }
