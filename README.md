@@ -118,7 +118,7 @@ make monitor
 
 如将 ESP32 拨至运行状态，即可看到如下 log：
 
-- 默认上电的配网日志打印
+- 默认上电是进去配网配网状态，打开微信---关注安信可科技微信公众号，打开微信配网页面，输入2.4G WiFi路由器信息，进入配网。
 
 ```
 I (885) wifi:mode : sta (9c:9c:1f:1d:33:00)
@@ -218,7 +218,7 @@ idf.py menuconfig
 
 ![](static/Version-Setting.png)
 
-重新编译成功之后，在工程的 build 文件下面生成一个 850KB左右的 **aithinker-esp32-huawei-iot.bin 文件**；
+重新编译成功之后，在工程的 build 文件下面生成一个 850KB左右的 **aithinker-esp32-huawei-iot.bin文件**；
 
 ```
 idf.py build
